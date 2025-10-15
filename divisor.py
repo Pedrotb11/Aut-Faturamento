@@ -115,3 +115,4 @@ def processar_pdfs():
 
 if __name__ == "__main__":
     processar_pdfs()
+
