@@ -20,13 +20,10 @@ if not folder_path:
 # Caminho para o Poppler no Windows
 POPPLER_PATH = r"C:/poppler/poppler-24.08.0/Library/bin"  # Atualize este caminho conforme necessário
 
-# Caminho para o executável do Tesseract no Windows
-#pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
-
 # Assume que o Tesseract virá junto na pasta do projeto
-pytesseract.pytesseract.tesseract_cmd = os.path.join(os.path.dirname(__file__), "tesseract", "tesseract.exe")
+pytesseract.pytesseract.tesseract_cmd = os.path.join(os.path.dirname(__file__), "Tesseract","Tesseract-OCR", "tesseract.exe")
 
-PASTA_ORIGEM = folder_path
+PASTA_ORIGEM = folder_path #pasta selecionada pelo dialog
 PASTA_DESTINO = "SEPARADOS"
 
 os.makedirs(PASTA_DESTINO, exist_ok=True)
@@ -34,18 +31,36 @@ os.makedirs(PASTA_DESTINO, exist_ok=True)
 # Mapeia variações e erros comuns para o nome correto
 NOMES_CORRETOS = {
     "DR DANIEL CAMPELO": "DR. DANIEL CAMPELO",
+    "DR. DANIEL CAMPELO'": "DR. DANIEL CAMPELO",
+
     "DRA ANA PAULA SIMÕES": "DRA. ANA PAULA SIMÕES",
     "DRA. ANA PAULA SIMOES": "DRA. ANA PAULA SIMÕES",
     "DRA ANA PAULA SIMOES": "DRA. ANA PAULA SIMÕES",
     "DRA. ANA PAULA SIMÓES": "DRA. ANA PAULA SIMÕES",
-    "DRA PEDRO PESSANHA": "DRA. PEDRO PESSANHA",
-    "DRA CAMILA GALINDO": "DRA CAMILA GALINDO",
+    "DRA. ANA PAULA SIMÓES'" : "DRA. ANA PAULA SIMÕES",
+    "DRA. ANA PAULA SIMÕES -": "DRA. ANA PAULA SIMÕES",
+    "DRA, ANA PAULA SIMÕES" : "DRA. ANA PAULA SIMÕES",
+
+    "DR PEDRO PESSANHA": "DR. PEDRO PESSANHA",
+
+    "DRA CAMILA GALINDO": "DRA. CAMILA GALINDO",
+    "DR. CAMILA GALINDO": "DRA. CAMILA GALINDO",
+    "DR CAMILA GALINDO": "DRA. CAMILA GALINDO",
+    "DRA, CAMILA GALINDO": "DRA. CAMILA GALINDO",
+    "DRA. CAMILA GALINDO'": "DRA. CAMILA GALINDO",
 }
 
 def normalizar_nome(anestesista_extraido):
-    nome = anestesista_extraido.lower().strip()
-    nome = re.sub(r"[^\w\s]", "", nome)  # Remove pontuação
-    return NOMES_CORRETOS.get(nome, anestesista_extraido.strip())
+    nome_original = anestesista_extraido.strip()
+    nome_limpo = re.sub(r"[^\w\s]", "", nome_original)  # Remove pontuação
+    nome_limpo = nome_limpo.upper()  # Converte para maiúsculas para comparar com as chaves
+    
+    # Busca na lista de nomes corretos
+    nome_corrigido = NOMES_CORRETOS.get(nome_limpo)
+    if nome_corrigido:
+        return nome_corrigido
+    # Se não encontrou, retorna o nome original
+    return nome_original
 
 def extrair_texto_ocr(pdf_path):
     try:
@@ -115,4 +130,3 @@ def processar_pdfs():
 
 if __name__ == "__main__":
     processar_pdfs()
-
