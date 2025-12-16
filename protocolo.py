@@ -4,28 +4,16 @@ import pytesseract
 from pdf2image import convert_from_path
 import re
 from openpyxl import Workbook
-from tkinter import Tk, filedialog
-from tqdm import tqdm 
-
-# Adicione esse parâmetro indicando o caminho do poppler
-POPPLER_PATH = r'C:\poppler\poppler-24.08.0\Library\bin'
-
-# Abre o Dialog para selecionar a pasta
-root = Tk()
-root.withdraw()
-folder_path = filedialog.askdirectory(title="Selecione a pasta com os PDFs")
-
-if not folder_path:
-    print("Nenhuma pasta selecionada.")
-    exit()
+from tqdm import tqdm
 
 # Caminho para o Poppler no Windows
-POPPLER_PATH = r"C:/poppler/poppler-24.08.0/Library/bin"
+POPPLER_PATH = r"C:/poppler/poppler-25.12.0/Library/bin"
 
-pytesseract.pytesseract.tesseract_cmd = os.path.join(os.path.dirname(__file__), "Tesseract","Tesseract-OCR", "tesseract.exe")
+# Puxa o Tesseract do sistema
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-PASTA_PDFS = folder_path
-RESULTADOS = []
+# Pasta base onde estão as subpastas já separadas por anestesista
+BASE_SEPARADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "SEPARADOS")
 
 def extrair_texto_ocr(pdf_path):
     try:
@@ -33,7 +21,7 @@ def extrair_texto_ocr(pdf_path):
         texto_total = ""
         for img in imagens:
             try:
-                img_rotacionada = img.rotate(180, expand=True)
+                img_rotacionada = img
                 texto_total += pytesseract.image_to_string(img_rotacionada, lang='por') + "\n"
             except pytesseract.TesseractError as e:
                 print(f"Erro no Tesseract ao processar imagem: {e}")
@@ -105,27 +93,50 @@ def extrair_dados(pdf_path):
 
     return [paciente, convenio, exame, data]
 
-for arquivo in tqdm(os.listdir(PASTA_PDFS), desc="Processando PDFs"):
-    if arquivo.lower().endswith('.pdf'):
-        caminho_pdf = os.path.join(PASTA_PDFS, arquivo)
-        dados = extrair_dados(caminho_pdf)
-        RESULTADOS.append(dados)
 
-# Salvar em Excel
-wb = Workbook()
-ws = wb.active
-ws.title = "protocolos" #se o codigo quebrar, mude pra "resultados"
+def processar_pasta(pasta_pdfs):
+    """Processa todos os PDFs de uma pasta e gera um Excel com os protocolos."""
+    resultados = []
 
-# Adicionar cabeçalhos
-ws.append(['Paciente', 'Convênio', 'Exame', 'Data'])
+    for arquivo in tqdm(os.listdir(pasta_pdfs), desc=f"Processando PDFs em {os.path.basename(pasta_pdfs)}"):
+        if arquivo.lower().endswith('.pdf'):
+            caminho_pdf = os.path.join(pasta_pdfs, arquivo)
+            dados = extrair_dados(caminho_pdf)
+            resultados.append(dados)
 
-# Adicionar dados
-for dados in RESULTADOS:
-    ws.append(dados)
+    if not resultados:
+        print(f"Nenhum PDF encontrado em {pasta_pdfs}. Pulando.")
+        return
 
-# Salvar arquivo
-base_folder_name = os.path.basename(PASTA_PDFS.rstrip("\\/"))
-output_filename = f"protocolos_{base_folder_name}.xlsx"
-wb.save(output_filename)
+    # Salvar em Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "protocolos"  # se o codigo quebrar, mude pra "resultados"
 
-print(f"Extração concluída. Dados salvos em {output_filename}.")
+    # Adicionar cabeçalhos
+    ws.append(['Paciente', 'Convênio', 'Exame', 'Data'])
+
+    # Adicionar dados
+    for dados in resultados:
+        ws.append(dados)
+
+    # Salvar arquivo dentro da própria pasta do anestesista
+    base_folder_name = os.path.basename(pasta_pdfs.rstrip("\\/"))
+    output_filename = f"protocolos_{base_folder_name}.xlsx"
+    caminho_saida = os.path.join(pasta_pdfs, output_filename)
+    wb.save(caminho_saida)
+
+    print(f"Extração concluída. Dados salvos em {caminho_saida}.")
+
+
+if __name__ == "__main__":
+    if not os.path.isdir(BASE_SEPARADOS):
+        print(f"Pasta 'SEPARADOS' não encontrada em: {BASE_SEPARADOS}")
+        raise SystemExit(1)
+
+    # Percorre todas as subpastas dentro de SEPARADOS (um anestesista por pasta)
+    for nome_pasta in os.listdir(BASE_SEPARADOS):
+        caminho_pasta = os.path.join(BASE_SEPARADOS, nome_pasta)
+        if os.path.isdir(caminho_pasta):
+            print(f"\n=== Processando pasta: {caminho_pasta} ===")
+            processar_pasta(caminho_pasta)
